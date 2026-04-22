@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Id": "com.deveshb.dvdscreensaver",
+        "Name": "DVD Screensaver",
+        "Description": "Bouncing DVD logo wallpaper",
+        "Version": "1.0",
+        "License": "MIT",
+        "Authors": [{"Name": "DeveshB"}],
+        "Category": "Animated"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
