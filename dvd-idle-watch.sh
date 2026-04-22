@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Launches DVD screensaver after 5 min idle, kills it on activity
 
-IDLE_THRESHOLD=10000    # 10 seconds in ms
+IDLE_THRESHOLD=300000   # 5 minutes in ms
 POLL_INTERVAL=10        # seconds between checks
 SCREENSAVER="/home/deveshb/Desktop/dvd-screensaver/dvd_screensaver.py"
 
