@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DVD Screensaver</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    cursor: none;
+    font-family: sans-serif;
+  }
+
+  /* CRT scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0,0,0,0.18) 2px,
+      rgba(0,0,0,0.18) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  #canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  #dvd-wrap {
+    position: absolute;
+    width: 220px;
+    height: 110px;
+    z-index: 10;
+    transition: filter 0.15s;
+  }
+
+  #dvd-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 20px currentColor);
+  }
+
+  #corner-msg {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 3rem;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 0 30px #fff, 0 0 60px #fff;
+    letter-spacing: 0.15em;
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0;
+    transition: none;
+  }
+
+  #bounce-count {
+    position: fixed;
+    bottom: 18px;
+    right: 24px;
+    color: rgba(255,255,255,0.18);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    z-index: 50;
+    font-family: monospace;
+  }
+
+  #corner-count {
+    position: fixed;
+    bottom: 18px;
+    left: 24px;
+    color: rgba(255,255,255,0.18);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    z-index: 50;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div id="dvd-wrap">
+  <svg id="dvd-svg" viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg">
+    <!-- disc shape hint -->
+    <ellipse cx="110" cy="30" rx="36" ry="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"/>
+    <!-- DVD text -->
+    <text x="8" y="72" font-family="'Arial Black',Arial,sans-serif" font-size="68" font-weight="900"
+          fill="currentColor" letter-spacing="-2">DVD</text>
+    <!-- underline -->
+    <rect x="8" y="80" width="148" height="7" rx="3.5" fill="currentColor"/>
+    <!-- VIDEO label -->
+    <text x="162" y="90" font-family="Arial,sans-serif" font-size="15" font-weight="700"
+          fill="currentColor" letter-spacing="2">VIDEO</text>
+  </svg>
+</div>
+
+<div id="corner-msg">CORNER!</div>
+<div id="bounce-count">BOUNCES: 0</div>
+<div id="corner-count">CORNERS: 0</div>
+
+<script>
+const wrap        = document.getElementById('dvd-wrap');
+const svg         = document.getElementById('dvd-svg');
+const cornerMsg   = document.getElementById('corner-msg');
+const bounceEl    = document.getElementById('bounce-count');
+const cornerEl    = document.getElementById('corner-count');
+const canvas      = document.getElementById('canvas');
+const ctx         = canvas.getContext('2d');
+
+// ── size
+const LW = 220, LH = 110;
+let W, H;
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── colors with glow hex
+const COLORS = [
+  { fill:'#ff3355', glow:'#ff003366' },
+  { fill:'#ff8800', glow:'#ff660033' },
+  { fill:'#ffe600', glow:'#ffcc0033' },
+  { fill:'#00ff88', glow:'#00ff4433' },
+  { fill:'#00ccff', glow:'#00aaff33' },
+  { fill:'#aa44ff', glow:'#8800ff33' },
+  { fill:'#ff44cc', glow:'#ff00aa33' },
+  { fill:'#00ffcc', glow:'#00ffaa33' },
+];
+
+let colorIdx = 0;
+function nextColor() {
+  let i; do { i = Math.floor(Math.random() * COLORS.length); } while (i === colorIdx);
+  colorIdx = i;
+  applyColor();
+}
+function applyColor() {
+  const c = COLORS[colorIdx];
+  wrap.style.color  = c.fill;
+  svg.style.filter  = `drop-shadow(0 0 8px ${c.fill}) drop-shadow(0 0 24px ${c.fill})`;
+}
+applyColor();
+
+// ── motion
+let x = 100, y = 80;
+let dx = 2.8, dy = 2.1;
+let bounces = 0, corners = 0;
+
+// ── particles
+const particles = [];
+class Particle {
+  constructor(px, py, color) {
+    this.x  = px; this.y = py;
+    this.vx = (Math.random()-0.5) * 8;
+    this.vy = (Math.random()-0.5) * 8;
+    this.life = 1;
+    this.decay = 0.025 + Math.random() * 0.03;
+    this.size  = 3 + Math.random() * 4;
+    this.color = color;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vy += 0.15;
+    this.life -= this.decay;
+  }
+  draw() {
+    ctx.save();
+    ctx.globalAlpha = this.life;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur  = 10;
+    ctx.fillStyle   = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function spawnParticles(px, py) {
+  const c = COLORS[colorIdx].fill;
+  for (let i = 0; i < 28; i++) particles.push(new Particle(px, py, c));
+}
+
+// ── corner flash
+let cornerFlashT = 0;
+function triggerCorner() {
+  corners++;
+  cornerEl.textContent = `CORNERS: ${corners}`;
+  cornerFlashT = 1;
+}
+
+// ── glow trail (store last positions)
+const trail = [];
+const TRAIL_LEN = 12;
+
+// ── main loop
+function tick() {
+  // clear canvas
+  ctx.clearRect(0, 0, W, H);
+
+  // draw trail
+  for (let i = 0; i < trail.length; i++) {
+    const t = trail[i];
+    const alpha = (i / TRAIL_LEN) * 0.18;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = COLORS[colorIdx].fill;
+    ctx.shadowBlur  = 30;
+    ctx.fillStyle   = COLORS[colorIdx].fill;
+    ctx.fillRect(t.x + LW*0.1, t.y + LH*0.1, LW*0.8, LH*0.8);
+    ctx.restore();
+  }
+
+  // particles
+  for (let i = particles.length-1; i >= 0; i--) {
+    particles[i].update();
+    particles[i].draw();
+    if (particles[i].life <= 0) particles.splice(i,1);
+  }
+
+  // corner flash
+  if (cornerFlashT > 0) {
+    cornerFlashT -= 0.02;
+    const scale = 1 + (1-cornerFlashT)*0.4;
+    cornerMsg.style.opacity   = Math.min(cornerFlashT * 3, 1);
+    cornerMsg.style.transform = `translate(-50%,-50%) scale(${scale})`;
+    cornerMsg.style.color     = COLORS[colorIdx].fill;
+    cornerMsg.style.textShadow= `0 0 30px ${COLORS[colorIdx].fill}, 0 0 80px ${COLORS[colorIdx].fill}`;
+  } else {
+    cornerMsg.style.opacity = 0;
+  }
+
+  // move
+  trail.push({x, y});
+  if (trail.length > TRAIL_LEN) trail.shift();
+
+  x += dx; y += dy;
+
+  let hitX = false, hitY = false;
+  if (x <= 0)       { x = 0;      dx =  Math.abs(dx); hitX = true; }
+  if (x + LW >= W)  { x = W-LW;   dx = -Math.abs(dx); hitX = true; }
+  if (y <= 0)       { y = 0;      dy =  Math.abs(dy); hitY = true; }
+  if (y + LH >= H)  { y = H-LH;   dy = -Math.abs(dy); hitY = true; }
+
+  if (hitX || hitY) {
+    bounces++;
+    bounceEl.textContent = `BOUNCES: ${bounces}`;
+    const bx = hitX ? (dx > 0 ? LW/2 : W - LW/2) : x + LW/2;
+    const by = hitY ? (dy > 0 ? LH/2 : H - LH/2) : y + LH/2;
+    spawnParticles(bx, by);
+    nextColor();
+    if (hitX && hitY) triggerCorner();
+  }
+
+  wrap.style.left = x + 'px';
+  wrap.style.top  = y + 'px';
+
+  requestAnimationFrame(tick);
+}
+
+tick();
+</script>
+</body>
+</html>
