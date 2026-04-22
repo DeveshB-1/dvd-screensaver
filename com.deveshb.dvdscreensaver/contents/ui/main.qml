@@ -50,6 +50,24 @@ Rectangle {
         width: root.logoW
         height: root.logoH
 
+        // oval border
+        Canvas {
+            x: 0; y: 0
+            width: root.logoW
+            height: root.logoH
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                ctx.strokeStyle = root.colors[root.colorIdx]
+                ctx.lineWidth = 3
+                ctx.beginPath()
+                ctx.ellipse(0, 0, width, height)
+                ctx.stroke()
+            }
+            property string watchColor: root.colors[root.colorIdx]
+            onWatchColorChanged: requestPaint()
+        }
+
         Text {
             text: "DVD"
             font.family: "Arial Black"
