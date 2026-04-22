@@ -76,21 +76,6 @@ Rectangle {
             letterSpacing: 1
         }
 
-        Canvas {
-            x: 78; y: 2
-            width: 64; height: 18
-            onPaint: {
-                var ctx = getContext("2d")
-                ctx.clearRect(0, 0, width, height)
-                ctx.strokeStyle = root.colors[root.colorIdx]
-                ctx.lineWidth = 1.5
-                ctx.beginPath()
-                ctx.ellipse(0, 0, width, height)
-                ctx.stroke()
-            }
-            property string watchColor: root.colors[root.colorIdx]
-            onWatchColorChanged: requestPaint()
-        }
     }
 
     // corner flash

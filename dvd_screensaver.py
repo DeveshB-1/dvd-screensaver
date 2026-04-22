@@ -76,10 +76,6 @@ class DVDScreen(QWidget):
         p.setFont(QFont("Arial", 11, QFont.Bold))
         p.setPen(self.color)
         p.drawText(138, 82, "VIDEO")
-        # disc ellipse
-        p.setPen(QPen(self.color, 1.5))
-        p.setBrush(Qt.NoBrush)
-        p.drawEllipse(QRectF(78, 2, 64, 18))
         p.end()
         self._logo_pm = pm
 
