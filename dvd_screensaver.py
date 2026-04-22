@@ -64,10 +64,6 @@ class DVDScreen(QWidget):
         pm.fill(Qt.transparent)
         p = QPainter(pm)
         p.setRenderHint(QPainter.Antialiasing)
-        # oval border
-        p.setPen(QPen(self.color, 3))
-        p.setBrush(Qt.NoBrush)
-        p.drawEllipse(QRectF(0, 0, self.LW, self.LH))
         # DVD text
         p.setFont(QFont("Arial Black", 58, QFont.Black))
         p.setPen(self.color)
